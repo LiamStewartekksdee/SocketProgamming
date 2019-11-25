@@ -38,6 +38,11 @@ def main():
 					theDay = showDay.strftime('%A')
 					sendmsg('Today is: ' + theDay)
 					
+				if message.find('!Time') != -1:
+					showTime = datetime.datetime.now()
+					theTime = showTime.strftime('%H:%M')
+					sendmsg('The time is: ' + theTime)
+					
 				if message.find('Hello ' + botnick) != -1:
 				   sendmsg("Hello " + name + "!")    
 		else:
