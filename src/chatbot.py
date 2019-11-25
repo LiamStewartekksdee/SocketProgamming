@@ -1,4 +1,5 @@
 import socket
+import datetime
 ircsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server = "chat.freenode.net" # Server
 channel = "##bottestchannel" # Channel
@@ -27,6 +28,16 @@ def main():
 			name = ircmsg.split('!',1)[0][1:]
 			message = ircmsg.split('PRIVMSG',1)[1].split(':',1)[1]
 			if len(name) < 17:
+				if message.find('!Date') != -1:
+					showDate = datetime.datetime.now()
+					theDate = showDate.strftime('%Y-%m-%d')
+					sendmsg('The date is: ' + theDate)
+					
+				if message.find('!Day') != -1:
+					showDay = datetime.datetime.now()
+					theDay = showDay.strftime('%A')
+					sendmsg('Today is: ' + theDay)
+					
 				if message.find('Hello ' + botnick) != -1:
 				   sendmsg("Hello " + name + "!")    
 		else:
