@@ -6,6 +6,8 @@ import socket
 import selectors
 import types
 
+channels = set()
+
 sel = selectors.DefaultSelector()
 # define server address
 HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
@@ -53,3 +55,16 @@ def service_connection(key, mask):
             print('echoing', repr(data.outb), 'to', data.addr)
             sent = sock.send(data.outb)  # Should be ready to write
             data.outb = data.outb[sent:]
+
+def joinchannel(user, channel):
+    channel = channel.lower()
+    user=user.lower()
+    channel.add(user)
+    channels.add(channel)
+
+def __parse_input(line):
+    x = line.split()
+    command = x[0]
+    arguments = [x[1:]]
+    return command, arguments
+
