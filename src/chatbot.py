@@ -1,27 +1,43 @@
 import socket
 import datetime
-ircsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server = "chat.freenode.net" # Server
-channel = "##bottestchannel" # Channel
-botnick = "ChatBot" # Your bots nick
-ircsock.connect((server, 6667)) # Here we connect to the server using the port 6667
-ircsock.send(bytes("USER "+ botnick +" "+ botnick +" "+ botnick + " " + botnick + "\n", "UTF-8")) #We are basically filling out a form with this line and saying to set all the fields to the bot nickname.
-ircsock.send(bytes("NICK "+ botnick +"\n", "UTF-8")) # assign the nick to the bot
-def joinchan(chan): # join channel(s).
-	ircsock.send(bytes("JOIN "+ chan +"\n", "UTF-8")) 
-	ircmsg = ""
-	while ircmsg.find("End of /NAMES list.") == -1:  
-		ircmsg = ircsock.recv(2048).decode("UTF-8")
-		ircmsg = ircmsg.strip('\n\r')
-		print(ircmsg)
-def ping(): # respond to server Pings.
-	ircsock.send(bytes("PONG :pingisn", "UTF-8"))
-def sendmsg(msg, target=channel): # sends messages to the target.
-	ircsock.send(bytes("PRIVMSG "+ target +" :"+ msg +"\n", "UTF-8"))
+
+
+
+# clientsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# server = "localhost" # Server
+# channel = "##bottestchannel" # Channel
+# botnick = "ChatBot" # Your bots nick
+
+# irc_server = ircserver((server, 6667))
+# irc_server_addr, irc_server_hostname = irc_server.get_server_info()
+
+
+class irc_bot:
+	def __init__(self, clientsock, serversock, botnick):
+		self.clientsock = clientsock
+		self.botnick = botnick
+		clientsock.send(bytes("USER "+ self.botnick +" "+ self.botnick +" "+ self.botnick + " " + self.botnick + "\n", "UTF-8")) #We are basically filling out a form with this line and saying to set all the fields to the bot nickname.
+		clientsock.send(bytes("NICK "+ self.botnick +"\n", "UTF-8")) # assign the nick to the bot
+
+	
+	def joinchan(self, chan): # join channel(s).
+		self.clientsock.send(bytes("JOIN "+ chan +"\n", "UTF-8")) 
+		ircmsg = ""
+		while ircmsg.find("End of /NAMES list.") == -1:  
+			ircmsg = serversock.recv(2048).decode("UTF-8")
+			ircmsg = ircmsg.strip('\n\r')
+			print(ircmsg)
+	
+	def ping(self): # respond to server Pings.
+		self.clientsock.send(bytes("PONG :pingisn", "UTF-8"))
+	
+	def sendmsg(self, msg, target='#bottest'): # sends messages to the target.
+		self.clientsock.send(bytes("PRIVMSG "+ target +" :"+ msg +"\n", "UTF-8"))
+
 def main():
 	joinchan(channel)
 	while 1:
-		ircmsg = ircsock.recv(2048).decode("UTF-8")
+		ircmsg = clientsock.recv(2048).decode("UTF-8")
 		ircmsg = ircmsg.strip('\n\r')
 		print(ircmsg)
 		if ircmsg.find("PRIVMSG") != -1:
@@ -48,4 +64,6 @@ def main():
 		else:
 			if ircmsg.find("PING :") != -1:
 				ping()
-main()
+
+# if __name__ == '__main__':
+# 	main()
