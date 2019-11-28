@@ -1,91 +1,122 @@
+#!/usr/bin/env python3
+
+# Skeleton of IRC server handling multiple connections via https://realpython.com/python-sockets/#multi-connection-client-and-server
+
 import socket
-import threading as th
-import sys, os
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import chatbot
+import selectors
+import types
+import threads
 
 
-'''
-Server based on the Internet Chat Relay(IRC) Protocol
-'''
-class ircserver:
-    def __init__(self, server_address=('localhost', 6666)):
-        # socket creation:
-        # create socket, bind address, listen to connections, accept connections, send/receive data
 
-        # family=AF_INET address family hat provides interprocess communication between processes that run on the same system/ different systems
-        # type=SOCK_STREAM socket type that sends text in the same order as the original, delivery guaranteed
-        self.server_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        self.server_address = server_address
+class Server:
+    def __init__(self):  
+        self.channels = {}
 
-        # if the port is already in use reuse it 
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.HOST = 'localhost'
+        self.PORT = 7000
+        self.sel = selectors.DefaultSelector()
 
-        self.server_socket.bind(self.server_address)
-        self.server_socket.listen(10)
-        self.sockets = [self.server_socket]
+        self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.channels['localhost'] = self.server_sock
 
-        # client fields, once connected to the client these fields will be set
-        self.client_addr = None
-        self.client_conn = None
+    def start(self, sock, event_type, HOST, PORT):
+        sock.bind((HOST, PORT))
+        sock.listen(10)
+        print('listening on', (HOST, PORT))
+        # don't block when using socket, as we select from multiple sockets using selector
+        sock.setblocking(False)
+        self.sel.register(sock, event_type, data=None)
 
-        # bot initialiseation
-        self.irc_bot = None
+        e = self.sel.select(timeout=None)
+        for key, mask in e:
+            print(key)
 
-    def conn(self):
-        # check if the socket is the server socket
-        for so in self.sockets:
-            if so.getsockname()[1] == self.server_address[1]:
-                print('waiting for connection to the client')
-                self.client_conn, client_addr = so.accept()
-        
-        self.create_bot('TESTBOT')
+    def create_sock(self):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        return sock
+
+    def run(self):
+        self.start(self.server_sock, selectors.EVENT_READ, self.HOST, self.PORT)
         while True:
-            try:
-                print('connection from {}'.format(client_addr))
-                while True:
-                    data = self.client_conn.recv(512)
-                    print('received'.format(data))
+            events = self.sel.select(timeout=None)
+            for key, mask in events:
+                #print('{0}, {1}'.format(key, mask))
+                # if new connection, accept it using our wrapper function to create socket object and register it with the selector
+                if key.data is None:
+                    self.accept_wrapper(key.fileobj)
+                # if it's been accepted, read or write or close
+                else:
+                    self.service_connection(key, mask)
 
-                    self.irc_bot.ping()
-                    if data:
-                        self.client_conn.sendall(data)
-                    else:
-                        break
-            except Exception as e:
-                print(e)
-                print('Closing the connection between the client and the server')
-                self.client_conn.close()
-                break
+    def accept_wrapper(self, sock):
+        print('Waiting for connection to the client ... ')
+        conn, addr = sock.accept()  # Should be ready to read
+        print('accepted connection from', addr)
+        conn.setblocking(False)
+        data = types.SimpleNamespace(addr=addr, inb=b'', outb=b'')
+        events = selectors.EVENT_READ | selectors.EVENT_WRITE
+        self.sel.register(conn, events, data=data)
 
+    def service_connection(self, key, mask):
+        sock = key.fileobj
+        data = key.data
+        if mask & selectors.EVENT_READ:
+            recv_data = sock.recv(1024)  # Should be ready to read
+            print(recv_data)
+            if recv_data:
+                data.outb += recv_data
 
-    # def create_channel(self, port):
-    #     channel_socket = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-    #     channel_socket.bind((self.server_address[0], port))
-    #     channel_socket.listen(10)
-    #     self.sockets.append(channel_socket)
+            #     command, arguments = __parse_input(recv_data)
+            #     if(command == "JOIN" & len(arguments)>0) joinchannel(,argument[0])
+            else:
+                print('closing connection to ', data.addr)
+                self.sel.unregister(sock)
+                sock.close()
+        if mask & selectors.EVENT_WRITE:
+            if data.outb:
+                print('echoing', repr(data.outb), 'to', data.addr)
+                sent = sock.send(data.outb)  # Should be ready to write
+                data.outb = data.outb[sent:]
 
-    
-    def create_bot(self, botnick):
-        # if self.irc_bot == None:
-        #     raise Exception('Client not connected. Connect the client to create a bot')
-        
-        print('---Bot is connecting---')
-        self.irc_bot = chatbot.irc_bot(self.client_conn, self.server_address, botnick)
-        return self.irc_bot
-
-    def get_server_info(self):
-        return self.server_address, socket.gethostname()
-
-    def get_server_socket(self):
-        return self.server_socket
-    
-    def get_client_conn(self):
-        if self.client_conn == None:
-            raise Exception('Client not connected. Connect the client to use the client port')
-        return self.client_conn
+                if repr(data.outb).find('nJOIN #testchannel'):
+                    if '#testchannel' not in self.channels:
+                        print('creating test channel...')
+                        sock = self.create_sock()
+                        self.channels['#testchannel'] = sock
+                        self.start(sock, selectors.EVENT_READ, self.HOST, self.PORT+1)
+                
+    # def create_channel(self, chann_name) :
+    #     if chann_name not in channels:
+            
 
 if __name__ == '__main__':
-    ircserver = ircserver();
-    ircserver.conn()
+    ircserver = Server()
+    ircserver.run()
+
+    # #simple server
+    # HOST = 'localhost'
+    # PORT = 7000
+    # sel = selectors.DefaultSelector()
+
+    # serv_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # serv_socket.bind((HOST, PORT))
+    # serv_socket.listen(10)
+    # serv_socket.setblocking(False)
+
+    # sel.register(serv_socket, selectors.EVENT_READ | selectors.EVENT_WRITE)
+
+    # while True:
+    #     for key, mask in sel.select(timeout=1):
+    #         conn = key.fileobj
+    #         print('client {}'.format(conn.getpeername()))
+
+    #         if mask and selectors.EVENT_READ:
+    #             print('ready to read')
+    #             data = conn.recv(512)
+    #             if data:
+    #                 print('recieved {!r}'.format(data))
+            
+    #         if mask and selectors.EVENT_WRITE:
+    #             print('ready to write')
+
