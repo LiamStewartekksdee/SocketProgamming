@@ -5,20 +5,30 @@
 import socket
 import selectors
 import types
-import threads
+import threading
+from queue import Queue
 
 
 
-class Server:
-    def __init__(self):  
+class Server():
+    def __init__(self):
+        self.NUM_THREADS = 2
+        self.JOB_NUM = [1, 2]  
+        self.queue = Queue()
         self.channels = {}
+        self.threads = []
+        self.registers = []
 
         self.HOST = 'localhost'
-        self.PORT = 7000
+        self.PORT = 6667
         self.sel = selectors.DefaultSelector()
 
-        self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.channels['localhost'] = self.server_sock
+        self.create_threads()
+        self.init_jobs()
+        #self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #self.channels['localhost'] = self.server_sock
+
+        
 
     def start(self, sock, event_type, HOST, PORT):
         sock.bind((HOST, PORT))
@@ -26,18 +36,13 @@ class Server:
         print('listening on', (HOST, PORT))
         # don't block when using socket, as we select from multiple sockets using selector
         sock.setblocking(False)
-        self.sel.register(sock, event_type, data=None)
-
-        e = self.sel.select(timeout=None)
-        for key, mask in e:
-            print(key)
+        self.registers.append(self.sel.register(sock, event_type, data=None))
 
     def create_sock(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         return sock
 
-    def run(self):
-        self.start(self.server_sock, selectors.EVENT_READ, self.HOST, self.PORT)
+    def accept_conn(self):
         while True:
             events = self.sel.select(timeout=None)
             for key, mask in events:
@@ -48,7 +53,7 @@ class Server:
                 # if it's been accepted, read or write or close
                 else:
                     self.service_connection(key, mask)
-
+            
     def accept_wrapper(self, sock):
         print('Waiting for connection to the client ... ')
         conn, addr = sock.accept()  # Should be ready to read
@@ -79,20 +84,42 @@ class Server:
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
 
-                if repr(data.outb).find('nJOIN #testchannel'):
-                    if '#testchannel' not in self.channels:
-                        print('creating test channel...')
-                        sock = self.create_sock()
-                        self.channels['#testchannel'] = sock
-                        self.start(sock, selectors.EVENT_READ, self.HOST, self.PORT+1)
+                # if repr(data.outb).find('nJOIN #testchannel'):
+                #     if '#testchannel' not in self.channels:
+                #         print('creating test channel...')
+                #         sock = self.create_sock()
+                #         self.channels['#testchannel'] = sock
+                #         self.start(sock, selectors.EVENT_READ, self.HOST, self.PORT+1)
                 
-    # def create_channel(self, chann_name) :
-    #     if chann_name not in channels:
+
+    def run(self):
+        while True:
+            j_num = self.queue.get()
+            if j_num == 1:
+                self.start(self.create_sock(), selectors.EVENT_READ, self.HOST, self.PORT)
+                self.accept_conn()
+            if j_num == 2:
+                for t in self.threads:
+                    print(t)
+
             
+            self.queue.task_done()
+
+    def create_threads(self):
+        for i in range(self.NUM_THREADS):
+            t = threading.Thread(target=self.run)
+            t.daemon = True
+            t.start()
+            self.threads.append(t)
+                
+    def init_jobs(self):
+        for i in self.JOB_NUM:
+            self.queue.put(i)
+
+        self.queue.join()      
 
 if __name__ == '__main__':
     ircserver = Server()
-    ircserver.run()
 
     # #simple server
     # HOST = 'localhost'

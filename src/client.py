@@ -54,4 +54,4 @@ class client:
 if __name__ == '__main__':
     botnick_inp = input('Enter nickname: ')
     client = client(botnick_inp)
-    client.run_client()
+    client.run_client('localhost', 6667)
