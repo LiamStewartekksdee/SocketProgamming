@@ -11,7 +11,6 @@ class Client(object):
         self.server = server
         self.socket = socket
         self.channels = {}
-        # self.channels = set()
         self.username = None
         self.realname = None
         self.nickname = None
@@ -34,8 +33,11 @@ class Client(object):
         channel = self.server.get_channel(channelname)
         channel.add_member(self)
         self.channels[channelname.lower()] = channel
+        print(self.username + " connected to " + channelname)
     
     def leave_channel(self, channelname):
         channel = self.channels[channelname.lower()]
         channel.remove_member(self)
         del self.channels[channelname.lower()]
+        print(self.username + " connected to " + channelname)
+

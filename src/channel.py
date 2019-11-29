@@ -23,7 +23,6 @@ class Channel(object):
         if not self.members:
             # remove channel - call server function, as it should deal with creating/deleting channels
             self.server.delete_channel(self)
-            return
     
     # def remove_client(self, client):
     #     self.members.discard(client)

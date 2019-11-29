@@ -51,9 +51,15 @@ class Server(object):
         data = types.SimpleNamespace(addr=addr, inb=b'', outb=b'')
         events = selectors.EVENT_READ | selectors.EVENT_WRITE
         self.sel.register(conn, events, data=data)
-        
+        # create a Client object and hold it in a dictionary as a pair socket : Client object
         self.clients[conn] = client.Client(self, conn)
         print("Accepted connection from %s:%s." % (addr[0], addr[1]))
+    
+    def __parse_input(self, line):
+        x = line.split()
+        command = x[0]
+        arguments = [x[1:]]
+        return command, arguments
 
     def service_connection(self, key, mask):
         sock = key.fileobj
@@ -62,10 +68,22 @@ class Server(object):
             recv_data = sock.recv(1024)  # Should be ready to read
             if recv_data:
                 data.outb += recv_data
-            #     command, arguments = __parse_input(recv_data)
-            #     if(command == "JOIN" & len(arguments)>0) joinchannel(,argument[0])
+                # parse the line provided by the user
+                command, arguments = self.__parse_input(recv_data)
+                # if found 'join' command
+                if(command.upper() == "JOIN" & len(arguments)>0): 
+                    # find the client in the dict searching for his socket
+                    if sock in self.clients:
+                        # get client object that is in our dictionary as a 
+                        # pair socket : Client object and connect Client to channel
+                        self.clients[sock].join_channel(arguments[0])
             else:
                 print('closing connection to', data.addr)
+                # leave channel before deleting socket
+                self.clients[sock].leave_channel()
+                # delete client from the dictionary
+                if sock in self.clients: del self.clients[sock]
+                # unregister and close socket made for a client
                 self.sel.unregister(sock)
                 sock.close()
         if mask & selectors.EVENT_WRITE:
