@@ -3,7 +3,7 @@
 import socket
 import selectors
 import types
-import ircserver
+# import ircserver
 import channel
 
 class Client(object):
@@ -33,11 +33,13 @@ class Client(object):
         channel = self.server.get_channel(channelname)
         channel.add_member(self)
         self.channels[channelname.lower()] = channel
-        print(self.username + " connected to " + channelname)
+        print(" connected to " + channelname)
+        print(self.channels)
+        print(" are the client channels")
     
     def leave_channel(self, channelname):
         channel = self.channels[channelname.lower()]
         channel.remove_member(self)
         del self.channels[channelname.lower()]
-        print(self.username + " connected to " + channelname)
+        print(" left" + channelname)
 

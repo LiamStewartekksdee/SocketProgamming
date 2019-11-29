@@ -18,19 +18,19 @@ class Server(object):
         self.sel = selectors.DefaultSelector()
 
     def start(self):
-        sel = selectors.DefaultSelector()
-        # define server address
-        HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-        # Port to listen on (non-privileged ports are > 1023)
-        PORT = 6667
+        # sel = selectors.DefaultSelector()
+        # # define server address
+        # HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
+        # # Port to listen on (non-privileged ports are > 1023)
+        # PORT = 6667
 
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        lsock.bind((HOST, PORT))
+        lsock.bind((self.HOST, self.PORT))
         lsock.listen()
-        print('listening on', (HOST, PORT))
+        print('listening on', (self.HOST, self.PORT))
         # don't block when using socket, as we select from multiple sockets using selector
         lsock.setblocking(False)
-        sel.register(lsock, selectors.EVENT_READ, data=None)
+        self.sel.register(lsock, selectors.EVENT_READ, data=None)
 
     def run(self):
         while True:
@@ -58,24 +58,34 @@ class Server(object):
     def __parse_input(self, line):
         x = line.split()
         command = x[0]
-        arguments = [x[1:]]
+        arguments = x[1:]
+        # new_list = []
+        # for x in arguments:
+            # x = str(x, 'utf-8')
+            # new_list.append(x)
         return command, arguments
 
     def service_connection(self, key, mask):
         sock = key.fileobj
         data = key.data
         if mask & selectors.EVENT_READ:
-            recv_data = sock.recv(1024)  # Should be ready to read
+            recv_data = sock.recv(1024) # Should be ready to read
             if recv_data:
                 data.outb += recv_data
                 # parse the line provided by the user
-                command, arguments = self.__parse_input(recv_data)
+                command, arguments = self.__parse_input(recv_data.decode('utf-8'))
                 # if found 'join' command
-                if(command.upper() == "JOIN" & len(arguments)>0): 
+                print("received data:")
+                print(command)
+                print(arguments)
+                if((command.upper() == "JOIN") and (len(arguments)>0)): 
                     # find the client in the dict searching for his socket
+                    print("found join command and argument")
                     if sock in self.clients:
+                        print("found client in dictionary")
                         # get client object that is in our dictionary as a 
                         # pair socket : Client object and connect Client to channel
+                        print(arguments[0])
                         self.clients[sock].join_channel(arguments[0])
             else:
                 print('closing connection to', data.addr)
@@ -93,12 +103,13 @@ class Server(object):
                 data.outb = data.outb[sent:]
 
     def get_channel(self, channelname):
-        if channelname.lower() in self.channels:
-            channel = self.channels[channelname.lower()]
+        if channelname in self.channels:
+            channel1 = self.channels[channelname.lower()]
         else:
-            channel = channel.Channel(self, channelname)
-            self.channels[channelname.lower()] = channel
-        return channel
+            channel1 = channel.Channel(self, channelname)
+            print(channelname + " channel created")
+            self.channels[channelname.lower()] = channel1
+        return channel1
     
     def delete_channel(self, channel):
         del self.channels[channel.lower()]
@@ -107,3 +118,7 @@ class Server(object):
         if channelname.lower() in self.channels:
             channel = self.channels[channelname.lower()]
             channel.remove_member(client)
+
+server = Server()
+server.start()
+server.run()
