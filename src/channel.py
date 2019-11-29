@@ -3,8 +3,10 @@
 import socket
 import selectors
 import types
+import client
+import ircserver
 
-class Channel:
+class Channel(object):
     def __init__(self, server, name):
         self.server = server
         self.name = name
@@ -20,4 +22,10 @@ class Channel:
         self.members.discard(client)
         if not self.members:
             # remove channel - call server function, as it should deal with creating/deleting channels
+            self.server.delete_channel(self)
             return
+    
+    # def remove_client(self, client):
+    #     self.members.discard(client)
+    #     if not self.members:
+    #         self.server.remove_channel(self)
