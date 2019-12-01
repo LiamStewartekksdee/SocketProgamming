@@ -18,12 +18,6 @@ class Server(object):
         self.sel = selectors.DefaultSelector()
 
     def start(self):
-        # sel = selectors.DefaultSelector()
-        # # define server address
-        # HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-        # # Port to listen on (non-privileged ports are > 1023)
-        # PORT = 6667
-
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.HOST, self.PORT))
         lsock.listen()
@@ -59,10 +53,6 @@ class Server(object):
         x = line.split()
         command = x[0]
         arguments = x[1:]
-        # new_list = []
-        # for x in arguments:
-            # x = str(x, 'utf-8')
-            # new_list.append(x)
         return command, arguments
 
     def service_connection(self, key, mask):
@@ -93,6 +83,9 @@ class Server(object):
                         self.clients[sock].join_channel(arguments[0])
                 if((command.upper() == "PART") and len(arguments)>0):
                     # leave channel
+                    if sock in self.clients:
+                        if self.clients[sock].channels[arguments[0]]:
+                            self.clients[sock].leave_channel(arguments[0])
                     pass
                 if((command.upper() == "NICK") and len(arguments)>0):
                     # set/change nickname
@@ -108,7 +101,7 @@ class Server(object):
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
-                self.clients[sock].leave_channel()
+                self.clients[sock].leave_channels()
                 # delete client from the dictionary
                 if sock in self.clients: 
                     del self.clients[sock]
@@ -131,7 +124,7 @@ class Server(object):
         return channel1
     
     def delete_channel(self, channel):
-        del self.channels[channel.lower()]
+        del self.channels[channel]
 
     def remove_member_from_channel(self, client, channelname):
         if channelname.lower() in self.channels:

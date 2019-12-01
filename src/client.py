@@ -23,23 +23,22 @@ class Client(object):
         arguments = [x[1:]]
         return command, arguments
 
-    # def joinchannel(self, user, channel):
-    #     # channel = channel.lower()
-    #     # user=user.lower()
-    #     # channel.add(user)
-    #     self.channels[channel]=self
-
     def join_channel(self, channelname):
         channel = self.server.get_channel(channelname)
         channel.add_member(self)
         self.channels[channelname.lower()] = channel
         print(" connected to " + channelname)
         print(self.channels)
-        print(" are the client channels")
+        print(" are the client's channels")
     
     def leave_channel(self, channelname):
         channel = self.channels[channelname.lower()]
         channel.remove_member(self)
         del self.channels[channelname.lower()]
         print(" left" + channelname)
+
+    def leave_channels(self):
+        for channel in self.channels:
+            channel.remove_member(self)
+            del channel
 
