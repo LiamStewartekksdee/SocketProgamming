@@ -78,7 +78,11 @@ class Server(object):
                 print("received data:")
                 print(command)
                 print(arguments)
-                if((command.upper() == "JOIN") and (len(arguments)>0)): 
+                # we need at least 2 arguments - receiver and the message. Message is preceeded with colon
+                if((command.upper() == "PRIVMSG") and len(arguments)>1):
+                    # find out where to send the message and send it (pm or channel message)
+                    pass
+                if((command.upper() == "JOIN") and len(arguments)>0): 
                     # find the client in the dict searching for his socket
                     print("found join command and argument")
                     if sock in self.clients:
@@ -87,12 +91,27 @@ class Server(object):
                         # pair socket : Client object and connect Client to channel
                         print(arguments[0])
                         self.clients[sock].join_channel(arguments[0])
+                if((command.upper() == "PART") and len(arguments)>0):
+                    # leave channel
+                    pass
+                if((command.upper() == "NICK") and len(arguments)>0):
+                    # set/change nickname
+                    #             #   Numeric Replies:
+
+                    #    ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
+                    #    ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
+                    pass
+                if(command.upper() == "USER"):
+                    # set/change username & realname <-- client has to take this step before registering
+                    #Parameters: <username> <hostname> <servername> <realname>
+                    pass
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
                 self.clients[sock].leave_channel()
                 # delete client from the dictionary
-                if sock in self.clients: del self.clients[sock]
+                if sock in self.clients: 
+                    del self.clients[sock]
                 # unregister and close socket made for a client
                 self.sel.unregister(sock)
                 sock.close()
