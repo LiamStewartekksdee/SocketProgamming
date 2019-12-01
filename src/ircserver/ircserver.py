@@ -13,7 +13,7 @@ from queue import Queue
 class Server():
     def __init__(self):
         self.NUM_THREADS = 2
-        self.JOB_NUM = [1, 2]  
+        self.JOB_NUM = [1, 2, 3]  
         self.queue = Queue()
         self.channels = {}
         self.threads = []
@@ -37,6 +37,9 @@ class Server():
         # don't block when using socket, as we select from multiple sockets using selector
         sock.setblocking(False)
         self.registers.append(self.sel.register(sock, event_type, data=None))
+
+        for key, mask in self.sel.select(timeout=None):
+            print('key: {0}, mask: {1}'.format(key, mask))
 
     def create_sock(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -98,9 +101,13 @@ class Server():
             if j_num == 1:
                 self.start(self.create_sock(), selectors.EVENT_READ, self.HOST, self.PORT)
                 self.accept_conn()
-            if j_num == 2:
-                for t in self.threads:
-                    print(t)
+            # if j_num == 2:
+            #     self.start(self.create_sock(), selectors.EVENT_READ, self.HOST, 6668)
+            
+            # if j_num == 3:
+            #     self.accept_conn()  
+
+                #self.accept_conn()
 
             
             self.queue.task_done()
