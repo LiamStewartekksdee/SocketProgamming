@@ -5,8 +5,8 @@
 import socket
 import selectors
 import types
-import channel
 import client
+import channel
 
 
 class Server(object):
@@ -18,12 +18,6 @@ class Server(object):
         self.sel = selectors.DefaultSelector()
 
     def start(self):
-        # sel = selectors.DefaultSelector()
-        # # define server address
-        # HOST = '127.0.0.1'  # Standard loopback interface address (localhost)
-        # # Port to listen on (non-privileged ports are > 1023)
-        # PORT = 6667
-
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.HOST, self.PORT))
         lsock.listen()
@@ -46,7 +40,6 @@ class Server(object):
 
     def accept_wrapper(self, sock):
         conn, addr = sock.accept()  # Should be ready to read
-        print(conn)
         print('accepted connection from', addr)
         conn.setblocking(False)
         data = types.SimpleNamespace(addr=addr, inb=b'', outb=b'')
@@ -60,10 +53,6 @@ class Server(object):
         x = line.split()
         command = x[0]
         arguments = x[1:]
-        # new_list = []
-        # for x in arguments:
-            # x = str(x, 'utf-8')
-            # new_list.append(x)
         return command, arguments
 
     def service_connection(self, key, mask):
@@ -79,7 +68,11 @@ class Server(object):
                 print("received data:")
                 print(command)
                 print(arguments)
-                if((command.upper() == "JOIN") and (len(arguments)>0)): 
+                # we need at least 2 arguments - receiver and the message. Message is preceeded with colon
+                if((command.upper() == "PRIVMSG") and len(arguments)>1):
+                    # find out where to send the message and send it (pm or channel message)
+                    pass
+                if((command.upper() == "JOIN") and len(arguments)>0): 
                     # find the client in the dict searching for his socket
                     print("found join command and argument")
                     if sock in self.clients:
@@ -88,12 +81,30 @@ class Server(object):
                         # pair socket : Client object and connect Client to channel
                         print(arguments[0])
                         self.clients[sock].join_channel(arguments[0])
+                if((command.upper() == "PART") and len(arguments)>0):
+                    # leave channel
+                    if sock in self.clients:
+                        if self.clients[sock].channels[arguments[0]]:
+                            self.clients[sock].leave_channel(arguments[0])
+                    pass
+                if((command.upper() == "NICK") and len(arguments)>0):
+                    # set/change nickname
+                    #             #   Numeric Replies:
+
+                    #    ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
+                    #    ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
+                    pass
+                if(command.upper() == "USER"):
+                    # set/change username & realname <-- client has to take this step before registering
+                    #Parameters: <username> <hostname> <servername> <realname>
+                    pass
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
-                self.clients[sock].leave_channel(sock)
+                self.clients[sock].leave_channels()
                 # delete client from the dictionary
-                if sock in self.clients: del self.clients[sock]
+                if sock in self.clients: 
+                    del self.clients[sock]
                 # unregister and close socket made for a client
                 self.sel.unregister(sock)
                 sock.close()
@@ -113,7 +124,7 @@ class Server(object):
         return channel1
     
     def delete_channel(self, channel):
-        del self.channels[channel.lower()]
+        del self.channels[channel]
 
     def remove_member_from_channel(self, client, channelname):
         if channelname.lower() in self.channels:
