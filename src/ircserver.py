@@ -130,13 +130,14 @@ class Server(object):
                             sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
                             has_logged = True
 
-                if(command.upper() == "NICKLIST"):
+                if(command.upper() == "USERS"):
                     for client in self.clients.values():
-                        sock.send(bytes(str(client.get_nickname()) + '\n', 'UTF-8'))
+                        sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))
 
-                if(command.upper() == "USERLIST"):
+            
+                if(command.upper() == "NICKS"):
                     for client in self.clients.values():
-                        sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))         
+                        sock.send(bytes(str(client.get_nickname()) + '\n', 'UTF-8'))         
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
