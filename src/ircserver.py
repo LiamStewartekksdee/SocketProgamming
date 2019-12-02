@@ -52,8 +52,8 @@ class Server(object):
         self.clients[conn] = client.Client(self, conn)
         print("Accepted connection from %s:%s." % (addr[0], addr[1]))
 
-        for key, mask in self.sel.select(timeout=None):
-            print(key)
+        # for key, mask in self.sel.select(timeout=None):
+        #     print(key)
     
     def __parse_input(self, line):
         x = line.split()
@@ -146,10 +146,13 @@ class Server(object):
                 sock.close()
         if mask & selectors.EVENT_WRITE:
             if data.outb:
+                command, arguments = self.__parse_input(data.outb.decode('utf-8'))
+                if((command.upper() == "PRIVMSG") and len(arguments)>0):
+                    # targetname, message = self.__parse_input(arguments)
+                    self.send_message(arguments[0], arguments[1:], sock)
                 print('echoing', repr(data.outb), 'to', data.addr)
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
-
 
     def get_channel(self, channelname):
         if channelname in self.channels:
@@ -168,6 +171,20 @@ class Server(object):
             channel = self.channels[channelname.lower()]
             channel.remove_member(client)
 
+    def send_message(self, targetname, message, sock):
+        # targetname, message = self.__parse_input(line)
+        for client in self.clients.values():
+            if client.username == targetname:
+                # if (targetname in self.clients.values().username):
+                sock.send(bytes(message, 'UTF-8'))
+                break
+        if targetname in self.channels:
+            self.send_message_to_channel(targetname, message, sock)
+
+    
+    def send_message_to_channel(self, channelname, message, sock):
+        for member in self.channels[channelname.lower()].members:
+            self.send_message(member, message, sock)
     
 
 server = Server()
