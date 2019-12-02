@@ -19,10 +19,13 @@ class Server(object):
         self.HOST = '127.0.0.1'
         self.PORT = 6667
         self.sel = selectors.DefaultSelector()
-        #self.__registration_handler()
+        self.handler = self.__registration_handler
 
-    def __registration_handler(self):
-        command, arguments = self.__parse_input()
+    def __registration_handler(self, key, command, arguments):
+        sock = key.fileobj
+        data = key.data
+
+        sock.send(bytes('Use /USER <name>  and /NICK <name> to register. Once registered you can use commands\n', 'UTF-8'))
         if((command.upper() == "NICK") and len(arguments)>0):
             # set/change nickname
             #             #   Numeric Replies:
@@ -57,7 +60,41 @@ class Server(object):
                     self.clients[sock].set_username(arguments[0])
                     sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
                     has_logged = True
-        
+
+        if self.clients[sock].get_username() is not None and self.clients[sock].get_nickname() is not None:
+            self.handler = self.__command_handler
+            sock.send(bytes('Registered! You can now use commands \n', 'UTF-8'))
+        else:
+            if data:
+                self.handler = self.__registration_handler
+
+    def __command_handler(self, key, command, arguments):
+        sock = key.fileobj
+        # we need at least 2 arguments - receiver and the message. Message is preceeded with colon
+        if((command.upper() == "PRIVMSG") and len(arguments)>1):
+            # find out where to send the message and send it (pm or channel message)
+            pass
+        if((command.upper() == "JOIN") and len(arguments)>0): 
+            # find the client in the dict searching for his socket
+            print("found join command and argument")
+            if sock in self.clients:
+                print("found client in dictionary")
+                # get client object that is in our dictionary as a 
+                # pair socket : Client object and connect Client to channel
+                print(arguments[0])
+                self.clients[sock].join_channel(arguments[0])
+
+        if((command.upper() == "PART") and len(arguments)>0):
+            # leave channel
+            if sock in self.clients:
+                if self.clients[sock].channels[arguments[0]]:
+                    self.clients[sock].leave_channel(arguments[0])
+
+
+        if(command.upper() == "USERS"):
+            for client in self.clients.values():
+                sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))
+
     
     def start(self):
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -90,7 +127,6 @@ class Server(object):
         # create a Client object and hold it in a dictionary as a pair socket : Client object
         self.clients[conn] = client.Client(self, conn)
         print("Accepted connection from %s:%s." % (addr[0], addr[1]))
-
         # for key, mask in self.sel.select(timeout=None):
         #     print(key)
     
@@ -114,31 +150,8 @@ class Server(object):
                 print("received data:")
                 print(command)
                 print(arguments)
-                # we need at least 2 arguments - receiver and the message. Message is preceeded with colon
-                if((command.upper() == "PRIVMSG") and len(arguments)>1):
-                    # find out where to send the message and send it (pm or channel message)
-                    pass
-                if((command.upper() == "JOIN") and len(arguments)>0): 
-                    # find the client in the dict searching for his socket
-                    print("found join command and argument")
-                    if sock in self.clients:
-                        print("found client in dictionary")
-                        # get client object that is in our dictionary as a 
-                        # pair socket : Client object and connect Client to channel
-                        print(arguments[0])
-                        self.clients[sock].join_channel(arguments[0])
 
-                if((command.upper() == "PART") and len(arguments)>0):
-                    # leave channel
-                    if sock in self.clients:
-                        if self.clients[sock].channels[arguments[0]]:
-                            self.clients[sock].leave_channel(arguments[0])
-
-
-                if(command.upper() == "USERS"):
-                    for client in self.clients.values():
-                        sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))
-                            
+                self.handler(key, command, arguments)
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
