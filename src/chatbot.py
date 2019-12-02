@@ -16,8 +16,8 @@ def joinchan(chan): # join channel(s).
 		print(ircmsg)
 def ping(): # respond to server Pings.
 	ircsock.send(bytes("PONG :pingisn", "UTF-8"))
-def sendmsg(msg, target=channel): # sends messages to the target.
-	ircsock.send(bytes("PRIVMSG "+ target +" :"+ msg +"\n", "UTF-8"))
+def sendmsg(msg, sock, target=channel): # sends messages to the target.
+	sock.send(bytes("PRIVMSG "+ target +" :"+ msg +"\n", "UTF-8"))
 def main():
 	joinchan(channel)
 	while 1:
