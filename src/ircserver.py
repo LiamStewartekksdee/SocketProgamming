@@ -7,6 +7,9 @@ import selectors
 import types
 import client
 import channel
+import chatbot
+import servererr as serr
+
 
 
 class Server(object):
@@ -48,6 +51,9 @@ class Server(object):
         # create a Client object and hold it in a dictionary as a pair socket : Client object
         self.clients[conn] = client.Client(self, conn)
         print("Accepted connection from %s:%s." % (addr[0], addr[1]))
+
+        for key, mask in self.sel.select(timeout=None):
+            print(key)
     
     def __parse_input(self, line):
         x = line.split()
@@ -58,6 +64,7 @@ class Server(object):
     def service_connection(self, key, mask):
         sock = key.fileobj
         data = key.data
+        has_logged = False
         if mask & selectors.EVENT_READ:
             recv_data = sock.recv(1024) # Should be ready to read
             if recv_data:
@@ -81,23 +88,55 @@ class Server(object):
                         # pair socket : Client object and connect Client to channel
                         print(arguments[0])
                         self.clients[sock].join_channel(arguments[0])
+
                 if((command.upper() == "PART") and len(arguments)>0):
                     # leave channel
                     if sock in self.clients:
                         if self.clients[sock].channels[arguments[0]]:
                             self.clients[sock].leave_channel(arguments[0])
-                    pass
+
                 if((command.upper() == "NICK") and len(arguments)>0):
                     # set/change nickname
                     #             #   Numeric Replies:
 
                     #    ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
                     #    ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
-                    pass
+
+                    has_nick = False
+                    if sock in self.clients:
+                        for client in self.clients.values():
+                            if client.get_nickname() == arguments[0]:
+                                sock.send(bytes('ERR_NICKNAMEINUSE code:' + str(serr.ERR_NICKNAMEINUSE), 'UTF-8'))
+                                has_nick = True
+                                break
+                                
+                        if has_nick == False:
+                            self.clients[sock].set_nickname(arguments[0])
+                            sock.send(bytes('Nickname updated to ' + arguments[0] + '\n', 'UTF-8'))
+
                 if(command.upper() == "USER"):
                     # set/change username & realname <-- client has to take this step before registering
                     #Parameters: <username> <hostname> <servername> <realname>
-                    pass
+                    has_username = False
+                    if sock in self.clients:
+                        for client in self.clients.values():
+                            if client.get_username() == arguments[0]:
+                                sock.send(bytes('ERR_USERNAMEINUSE code:' + str(serr.ERR_USERNAMEINUSE), 'UTF-8'))
+                                has_username = True
+                                break
+
+                        if has_username == False:
+                            self.clients[sock].set_username(arguments[0])
+                            sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
+                            has_logged = True
+
+                if(command.upper() == "NICKLIST"):
+                    for client in self.clients.values():
+                        sock.send(bytes(str(client.get_nickname()) + '\n', 'UTF-8'))
+
+                if(command.upper() == "USERLIST"):
+                    for client in self.clients.values():
+                        sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))         
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
@@ -113,6 +152,7 @@ class Server(object):
                 print('echoing', repr(data.outb), 'to', data.addr)
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
+
 
     def get_channel(self, channelname):
         if channelname in self.channels:
@@ -130,6 +170,8 @@ class Server(object):
         if channelname.lower() in self.channels:
             channel = self.channels[channelname.lower()]
             channel.remove_member(client)
+
+    
 
 server = Server()
 server.start()
