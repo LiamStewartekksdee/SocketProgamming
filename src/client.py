@@ -3,7 +3,6 @@
 import socket
 import selectors
 import types
-# import ircserver
 import channel
 
 class Client(object):
