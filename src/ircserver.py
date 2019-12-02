@@ -87,7 +87,13 @@ class Server(object):
                         # get client object that is in our dictionary as a 
                         # pair socket : Client object and connect Client to channel
                         print(arguments[0])
+                        sock.send(bytes('332 ' + self.clients[sock].username + ' ' + arguments[0] + ' :random topic \r\n', 'UTF-8'))
+                        sock.send(bytes('353 ' + self.clients[sock].username + ' username ' + arguments[0] + ' ' + self.clients[sock].username + ' 366 ' + self.clients[sock].username + ' ' + arguments[0] + ' :End of names list\r\n', 'UTF-8'))
+
                         self.clients[sock].join_channel(arguments[0])
+
+
+
 
                 if((command.upper() == "PART") and len(arguments)>0):
                     # leave channel
@@ -174,10 +180,11 @@ class Server(object):
     def send_message(self, targetname, message, sock):
         # targetname, message = self.__parse_input(line)
         for client in self.clients.values():
-            if client.username == targetname:
+            if ((client.username == targetname) & (client != self.clients[sock])):
                 # if (targetname in self.clients.values().username):
-                sock.send(bytes(message, 'UTF-8'))
-                break
+                if message:
+                    sock.send(bytes(message, 'UTF-8'))
+                    break
         if targetname in self.channels:
             self.send_message_to_channel(targetname, message, sock)
 

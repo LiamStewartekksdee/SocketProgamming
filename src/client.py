@@ -29,6 +29,7 @@ class Client(object):
         print(" connected to " + channelname)
         print(self.channels)
         print(" are the client's channels")
+        # self.socket.send(bytes('332 ' + channelname + ' random topic', 'UTF-8'))
     
     def leave_channel(self, channelname):
         channel = self.channels[channelname.lower()]
@@ -37,7 +38,7 @@ class Client(object):
         print(" left" + channelname)
 
     def leave_channels(self):
-        for channel in self.channels:
+        for channel in self.channels.values():
             channel.remove_member(self)
             del channel
     
