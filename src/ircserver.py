@@ -19,7 +19,46 @@ class Server(object):
         self.HOST = '127.0.0.1'
         self.PORT = 6667
         self.sel = selectors.DefaultSelector()
+        #self.__registration_handler()
 
+    def __registration_handler(self):
+        command, arguments = self.__parse_input()
+        if((command.upper() == "NICK") and len(arguments)>0):
+            # set/change nickname
+            #             #   Numeric Replies:
+
+            #    ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
+            #    ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
+
+            has_nick = False
+            if sock in self.clients:
+                for client in self.clients.values():
+                    if client.get_nickname() == arguments[0]:
+                        sock.send(bytes('ERR_NICKNAMEINUSE code:' + str(serr.ERR_NICKNAMEINUSE), 'UTF-8'))
+                        has_nick = True
+                        break
+                        
+                if has_nick == False:
+                    self.clients[sock].set_nickname(arguments[0])
+                    sock.send(bytes('Nickname updated to ' + arguments[0] + '\n', 'UTF-8'))
+
+        if(command.upper() == "USER"):
+            # set/change username & realname <-- client has to take this step before registering
+            #Parameters: <username> <hostname> <servername> <realname>
+            has_username = False
+            if sock in self.clients:
+                for client in self.clients.values():
+                    if client.get_username() == arguments[0]:
+                        sock.send(bytes('ERR_USERNAMEINUSE code:' + str(serr.ERR_USERNAMEINUSE), 'UTF-8'))
+                        has_username = True
+                        break
+
+                if has_username == False:
+                    self.clients[sock].set_username(arguments[0])
+                    sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
+                    has_logged = True
+        
+    
     def start(self):
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.HOST, self.PORT))
@@ -95,40 +134,6 @@ class Server(object):
                         if self.clients[sock].channels[arguments[0]]:
                             self.clients[sock].leave_channel(arguments[0])
 
-                if((command.upper() == "NICK") and len(arguments)>0):
-                    # set/change nickname
-                    #             #   Numeric Replies:
-
-                    #    ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
-                    #    ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
-
-                    has_nick = False
-                    if sock in self.clients:
-                        for client in self.clients.values():
-                            if client.get_nickname() == arguments[0]:
-                                sock.send(bytes('ERR_NICKNAMEINUSE code:' + str(serr.ERR_NICKNAMEINUSE), 'UTF-8'))
-                                has_nick = True
-                                break
-                                
-                        if has_nick == False:
-                            self.clients[sock].set_nickname(arguments[0])
-                            sock.send(bytes('Nickname updated to ' + arguments[0] + '\n', 'UTF-8'))
-
-                if(command.upper() == "USER"):
-                    # set/change username & realname <-- client has to take this step before registering
-                    #Parameters: <username> <hostname> <servername> <realname>
-                    has_username = False
-                    if sock in self.clients:
-                        for client in self.clients.values():
-                            if client.get_username() == arguments[0]:
-                                sock.send(bytes('ERR_USERNAMEINUSE code:' + str(serr.ERR_USERNAMEINUSE), 'UTF-8'))
-                                has_username = True
-                                break
-
-                        if has_username == False:
-                            self.clients[sock].set_username(arguments[0])
-                            sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
-                            has_logged = True
 
                 if(command.upper() == "USERS"):
                     for client in self.clients.values():
