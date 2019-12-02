@@ -41,4 +41,15 @@ class Client(object):
         for channel in self.channels:
             channel.remove_member(self)
             del channel
+    
+    def set_nickname(self, nickname):
+        self.nickname = nickname
 
+    def get_nickname(self):
+        return self.nickname
+
+    def set_username(self, username):
+        self.username = username
+
+    def get_username(self):
+        return self.username
