@@ -20,12 +20,15 @@ class Server(object):
         self.PORT = 6667
         self.sel = selectors.DefaultSelector()
         self.handler = self.__registration_handler
+        self.prefix = '%s!%s@%s' #nickname, user, host
+        self.key = None
 
     def __registration_handler(self, key, command, arguments):
         sock = key.fileobj
         data = key.data
 
         sock.send(bytes('Use /USER <name>  and /NICK <name> to register. Once registered you can use commands\n', 'UTF-8'))
+        
         if((command.upper() == "NICK") and len(arguments)>0):
             # set/change nickname
             #             #   Numeric Replies:
@@ -63,6 +66,7 @@ class Server(object):
 
         if self.clients[sock].get_username() is not None and self.clients[sock].get_nickname() is not None:
             self.handler = self.__command_handler
+            self.prefix % (self.clients[sock].get_nickname(), self.clients[sock].get_username(), self.clients[sock].get_host())
             sock.send(bytes('Registered! You can now use commands \n', 'UTF-8'))
         else:
             if data:
@@ -74,16 +78,7 @@ class Server(object):
         if((command.upper() == "PRIVMSG") and len(arguments)>1):
             # find out where to send the message and send it (pm or channel message)
             pass
-        if((command.upper() == "JOIN") and len(arguments)>0): 
-            # find the client in the dict searching for his socket
-            print("found join command and argument")
-            if sock in self.clients:
-                print("found client in dictionary")
-                # get client object that is in our dictionary as a 
-                # pair socket : Client object and connect Client to channel
-                print(arguments[0])
-                self.clients[sock].join_channel(arguments[0])
-
+        self.__handle_join(key, command, arguments)
         if((command.upper() == "PART") and len(arguments)>0):
             # leave channel
             if sock in self.clients:
@@ -95,7 +90,22 @@ class Server(object):
             for client in self.clients.values():
                 sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))
 
-    
+    def __handle_join(self, key, command, arguments):
+        sock = key.fileobj
+        data = key.data
+        if((command.upper() == "JOIN") and len(arguments)>0): 
+            # find the client in the dict searching for his socket
+            print("found join command and argument")
+            if sock in self.clients:
+                print("found client in dictionary")
+                # get client object that is in our dictionary as a 
+                # pair socket : Client object and connect Client to channel
+                print(arguments[0])
+                self.clients[sock].join_channel(arguments[0])
+                #send_format = "TOPIC %s :%s" % (self.channels[arguments[0]].get_channel_name(), self.channels[arguments[0]].get_topic())
+                
+                #data.inb = send_format
+
     def start(self):
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.HOST, self.PORT))
@@ -139,6 +149,7 @@ class Server(object):
     def service_connection(self, key, mask):
         sock = key.fileobj
         data = key.data
+        self.key = key
         has_logged = False
         if mask & selectors.EVENT_READ:
             recv_data = sock.recv(1024) # Should be ready to read
@@ -153,7 +164,7 @@ class Server(object):
 
                 self.handler(key, command, arguments)
             else:
-                print('closing connection to', data.addr)
+                print('closing connectioimport selectorsn to', data.addr)
                 # leave channel before deleting socket
                 self.clients[sock].leave_channels()
                 # delete client from the dictionary
@@ -171,6 +182,10 @@ class Server(object):
                 print('echoing', repr(data.outb), 'to', data.addr)
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
+
+            if data.inb:
+                sent = sock.send(data.inb)
+                data.inb = data.inb[sent:]
 
     def get_channel(self, channelname):
         if channelname in self.channels:
@@ -192,7 +207,7 @@ class Server(object):
     def send_message(self, targetname, message, sock):
         # targetname, message = self.__parse_input(line)
         for client in self.clients.values():
-            if client.username == targetname:
+            if client.get_username() == targetname:
                 # if (targetname in self.clients.values().username):
                 sock.send(bytes(message, 'UTF-8'))
                 break
@@ -204,6 +219,27 @@ class Server(object):
         for member in self.channels[channelname.lower()].members:
             self.send_message(member, message, sock)
     
+    def send_message_to_client(self, message, key):
+        data = key.data
+        sock = key.fileobj
+        data.outb += bytes(message, 'UTF-8')
+        
+        print(data.outb)
+        
+        sent = sock.send(data.outb)
+        data.outb = data.outb[sent:]
+
+    def get_prefix(self):
+        return self.prefix
+    
+    def get_clients(self):
+        return self.clients
+
+    def get_selector(self):
+        return self.sel
+    
+    def get_key(self):
+        return self.key
 
 server = Server()
 server.start()
