@@ -132,16 +132,16 @@ class Client():
         print(self.channels)
         print(" are the client's channels")
     
-        
         response_format = ':%s TOPIC %s :%s\r\n' % (channel.topic_by, channel.name, channel.topic)
         self.writebuffer += response_format
-        
-        response_format = ':%s JOIN :%s\r\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), channelname)
-        self.writebuffer += response_format
+
+        for client in self.server.clients.values():      
+            response_format = ':%s JOIN :%s\r\n' % (self.prefix % (client.nickname, client.username, client.server.HOST), channelname)
+            self.writebuffer += response_format
 
         clients = self.server.get_clients()
         nicks = [client.get_nickname() for client in clients.values()]
-        
+
         response_format = ':%s 353 %s = %s :%s\r\n' % (self.server.HOST, self.nickname, channelname, ' '.join(nicks))
         self.writebuffer += response_format
     
