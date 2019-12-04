@@ -66,9 +66,11 @@ class Server(object):
         data = key.data
 
         if mask & selectors.EVENT_READ:
-            recv_data = sock.recv(1024) # Should be ready to read
+            recv_data = sock.recv(512) # Should be ready to read
             if recv_data:
                 data.outb += recv_data
+
+
                 # parse the line provided by the user
                 command, arguments = self.__parse_input(recv_data.decode('utf-8'))
                 # if found 'join' command
