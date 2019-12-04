@@ -29,7 +29,6 @@ class Client():
     def __registration_handler(self, key, command, arguments):
         sock = key.fileobj
         data = key.data
-        sock.send(bytes('Use /USER <name>  and /NICK <name> to register. Once registered you can use commands\n', 'UTF-8'))
         
         # handle the /NICK command and the /USER command
         self.__nickname_handler(key, command, arguments)
@@ -39,7 +38,7 @@ class Client():
         if self.username is not None and self.nickname is not None:
             self.handler = self.__command_handler
             self.prefix % (self.nickname, self.username, self.server.HOST)
-            sock.send(bytes('Registered! You can now use commands \n', 'UTF-8'))
+            self.welcome_message(key)
         else:
             if data:
                 self.handler = self.__registration_handler
@@ -56,12 +55,31 @@ class Client():
                         has_nick = True
                         break
                         
-                if has_nick == False:
+                
+                if not self.nickname or not has_nick:
                     self.nickname = arguments[0]
                     sock.send(bytes('Nickname updated to ' + arguments[0] + '\n', 'UTF-8'))
+                
+                # # updating the nickname
+                # if self.nickname is not None and not has_nick:
+                #     self.nickname = arguments[0]
+                #     response_format = ':%s %s %s\r\n' % (self.server.HOST, '001', self.nickname)
+                #     self.writebuffer += response_format
+                #     response_format = ':%s 376 %s :End of command, NICK updated.' % (self.server.HOST, self.nickname)
+                #     self.writebuffer += response_format
+                #     self.server.send_message_to_client(self.writebuffer, key)
+                #     self.writebuffer = ""
+                        
+                    
+                    
+                    
 
     def __username_handler(self, key, command, arguments):
         sock = key.fileobj
+        if len(arguments) > 1 and arguments[1] == "USER":
+            command = arguments[1]
+            arguments[0] = arguments[2]
+        
         if(command.upper() == "USER"):
             # set/change username & realname <-- client has to take this step before registering
             #Parameters: <username> <hostname> <servername> <realname>
@@ -73,11 +91,17 @@ class Client():
                         has_username = True
                         break
 
-                if has_username == False:
+                if not self.username or not has_username:
                     self.username = arguments[0]
                     sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
-                    has_logged = True
 
+                # if self.username is not None and not has_username:
+                #     response_format = ':%s %s %s\r\n' % (self.server.HOST, '001', self.username)
+                #     self.writebuffer += response_format
+                #     response_format = ':%s 376 %s :End of command.' % (self.server.HOST, self.username)
+                #     self.writebuffer += response_format
+                #     self.server.send_message_to_client(self.writebuffer, key)
+                #     self.writebuffer = ""
 
     def __users_handler(self, key, command, arguments):
         sock = key.fileobj
@@ -166,6 +190,20 @@ class Client():
             channel.remove_member(self)
             del channel
     
+
+    def welcome_message(self, key):
+        sock = key.fileobj
+        divider = '----------------------------'
+
+        sock.send(bytes(divider + '\r\n', 'UTF-8'))
+        sock.send(bytes('Welcome to @' + self.server.HOST + '\r\n', 'UTF-8'))
+        sock.send(bytes(divider + '\r\n', 'UTF-8'))
+        sock.send(bytes('USER: ' + self.nickname + ' NICK: ' + self.username + '\r\n', 'UTF-8'))
+        sock.send(bytes('Use /JOIN <#channelname> to join a channel and chat' + '\r\n', 'UTF-8'))
+        sock.send(bytes('Use /HELP to list the available commands' + '\r\n', 'UTF-8'))
+        sock.send(bytes(divider + '\r\n', 'UTF-8'))
+
+
     def set_nickname(self, nickname):
         self.nickname = nickname
 
