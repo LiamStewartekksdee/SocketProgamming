@@ -17,7 +17,7 @@ class Channel(object):
         self.nickname = None
         self.topic_by = 'jjj'
         self.topic = 'dddd'
-    
+        
     def add_member(self, client):
         self.members.add(client)
         print("added client to channel " + self.name)
