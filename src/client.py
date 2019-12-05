@@ -19,11 +19,12 @@ class Client():
         self.writebuffer = ""
         self.prefix = '%s!%s@%s' #nickname, user, host
         self.handler = self.__registration_handler
+        self.key = None
     
     def __parse_input(self, line):
         x = line.split()
         command = x[0]
-        arguments = [x[1:]]
+        arguments = x[1:]
         return command, arguments
 
     def __registration_handler(self, key, command, arguments):
@@ -131,14 +132,27 @@ class Client():
             # leave channel
             if sock in self.server.clients:
                 if self.server.clients[sock].channels[arguments[0]]:
-                    self.server.clients[sock].leave_channel(arguments[0])
-    
+                    self.server.clients[sock].leave_channels(arguments[0])
 
     def __privmsg_handler(self, key, command, arguments):
         if((command.upper() == "PRIVMSG") and len(arguments)>1):
-            # find out where to send the message and send it (pm or channel message)
-            pass
-    
+            channelname = arguments[0]
+            message = arguments[1:]
+            print(arguments)
+            #:source PRIVMSG <target> :Message
+            response_format = ':%s PRIVMSG %s %s\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), channelname, ' '.join(message))
+
+            channel = self.server.get_channel(channelname)
+        
+            for client in channel.members:
+                if client is not self:
+                    client.writebuffer += response_format   
+                    self.server.send_message_to_client(client.writebuffer, client.key)
+                    print(client.key)
+                  
+            for client in channel.members:
+                client.writebuffer = ""
+
     def __command_handler(self, key, command, arguments):
         self.__nickname_handler(key, command, arguments)
         self.__username_handler(key, command, arguments)

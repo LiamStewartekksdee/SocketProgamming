@@ -64,7 +64,8 @@ class Server(object):
     def service_connection(self, key, mask):
         sock = key.fileobj
         data = key.data
-
+        self.clients[sock].key = key
+        
         if mask & selectors.EVENT_READ:
             recv_data = sock.recv(512) # Should be ready to read
             if recv_data:
