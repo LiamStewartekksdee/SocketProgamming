@@ -19,83 +19,8 @@ class Server(object):
         self.HOST = '127.0.0.1'
         self.PORT = 6667
         self.sel = selectors.DefaultSelector()
-        self.handler = self.__registration_handler
-
-    def __registration_handler(self, key, command, arguments):
-        sock = key.fileobj
-        data = key.data
-
-        sock.send(bytes('Use /USER <name>  and /NICK <name> to register. Once registered you can use commands\n', 'UTF-8'))
-        if((command.upper() == "NICK") and len(arguments)>0):
-            # set/change nickname
-            #             #   Numeric Replies:
-
-            #    ERR_NONICKNAMEGIVEN             ERR_ERRONEUSNICKNAME
-            #    ERR_NICKNAMEINUSE               ERR_NICKCOLLISION
-
-            has_nick = False
-            if sock in self.clients:
-                for client in self.clients.values():
-                    if client.get_nickname() == arguments[0]:
-                        sock.send(bytes('ERR_NICKNAMEINUSE code:' + str(serr.ERR_NICKNAMEINUSE), 'UTF-8'))
-                        has_nick = True
-                        break
-                        
-                if has_nick == False:
-                    self.clients[sock].set_nickname(arguments[0])
-                    sock.send(bytes('Nickname updated to ' + arguments[0] + '\n', 'UTF-8'))
-
-        if(command.upper() == "USER"):
-            # set/change username & realname <-- client has to take this step before registering
-            #Parameters: <username> <hostname> <servername> <realname>
-            has_username = False
-            if sock in self.clients:
-                for client in self.clients.values():
-                    if client.get_username() == arguments[0]:
-                        sock.send(bytes('ERR_USERNAMEINUSE code:' + str(serr.ERR_USERNAMEINUSE), 'UTF-8'))
-                        has_username = True
-                        break
-
-                if has_username == False:
-                    self.clients[sock].set_username(arguments[0])
-                    sock.send(bytes('Username updated to ' + arguments[0] + '\n', 'UTF-8'))
-                    has_logged = True
-
-        if self.clients[sock].get_username() is not None and self.clients[sock].get_nickname() is not None:
-            self.handler = self.__command_handler
-            sock.send(bytes('Registered! You can now use commands \n', 'UTF-8'))
-        else:
-            if data:
-                self.handler = self.__registration_handler
-
-    def __command_handler(self, key, command, arguments):
-        sock = key.fileobj
-        # we need at least 2 arguments - receiver and the message. Message is preceeded with colon
-        if((command.upper() == "PRIVMSG") and len(arguments)>1):
-            # find out where to send the message and send it (pm or channel message)
-            pass
-        if((command.upper() == "JOIN") and len(arguments)>0): 
-            # find the client in the dict searching for his socket
-            print("found join command and argument")
-            if sock in self.clients:
-                print("found client in dictionary")
-                # get client object that is in our dictionary as a 
-                # pair socket : Client object and connect Client to channel
-                print(arguments[0])
-                self.clients[sock].join_channel(arguments[0])
-
-        if((command.upper() == "PART") and len(arguments)>0):
-            # leave channel
-            if sock in self.clients:
-                if self.clients[sock].channels[arguments[0]]:
-                    self.clients[sock].leave_channel(arguments[0])
 
 
-        if(command.upper() == "USERS"):
-            for client in self.clients.values():
-                sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))
-
-    
     def start(self):
         lsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         lsock.bind((self.HOST, self.PORT))
@@ -139,11 +64,14 @@ class Server(object):
     def service_connection(self, key, mask):
         sock = key.fileobj
         data = key.data
-        has_logged = False
+        self.clients[sock].key = key
+        
         if mask & selectors.EVENT_READ:
-            recv_data = sock.recv(1024) # Should be ready to read
+            recv_data = sock.recv(512) # Should be ready to read
             if recv_data:
                 data.outb += recv_data
+
+
                 # parse the line provided by the user
                 command, arguments = self.__parse_input(recv_data.decode('utf-8'))
                 # if found 'join' command
@@ -151,7 +79,7 @@ class Server(object):
                 print(command)
                 print(arguments)
 
-                self.handler(key, command, arguments)
+                self.clients[sock].handler(key, command, arguments)
             else:
                 print('closing connection to', data.addr)
                 # leave channel before deleting socket
@@ -171,6 +99,10 @@ class Server(object):
                 print('echoing', repr(data.outb), 'to', data.addr)
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
+
+            if data.inb:
+                sent = sock.send(data.inb)
+                data.inb = data.inb[sent:]
 
     def get_channel(self, channelname):
         if channelname in self.channels:
@@ -192,7 +124,7 @@ class Server(object):
     def send_message(self, targetname, message, sock):
         # targetname, message = self.__parse_input(line)
         for client in self.clients.values():
-            if client.username == targetname:
+            if client.get_username() == targetname:
                 # if (targetname in self.clients.values().username):
                 sock.send(bytes(message, 'UTF-8'))
                 break
@@ -204,6 +136,21 @@ class Server(object):
         for member in self.channels[channelname.lower()].members:
             self.send_message(member, message, sock)
     
+    def send_message_to_client(self, message, key):
+        data = key.data
+        sock = key.fileobj
+        data.outb += bytes(message, 'UTF-8')
+        
+        print(data.outb)
+        
+        sent = sock.send(data.outb)
+        data.outb = data.outb[sent:]
+
+    def get_prefix(self):
+        return self.prefix
+    
+    def get_clients(self):
+        return self.clients
 
 server = Server()
 server.start()
