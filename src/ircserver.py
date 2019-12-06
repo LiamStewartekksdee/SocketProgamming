@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Skeleton of IRC server handling multiple connections via https://realpython.com/python-sockets/#multi-connection-client-and-server
+# Skeleton of IRC server handling ultiple connections via https://realpython.com/python-sockets/#multi-connection-client-and-server
 
 import socket
 import selectors
@@ -64,7 +64,7 @@ class Server(object):
         sock = key.fileobj
         data = key.data
         self.clients[sock].key = key
-        
+
         if mask & selectors.EVENT_READ:
             recv_data = sock.recv(512) # Should be ready to read
             if recv_data:
@@ -91,10 +91,10 @@ class Server(object):
                 sock.close()
         if mask & selectors.EVENT_WRITE:
             if data.outb:
-                command, arguments = self.__parse_input(data.outb.decode('utf-8'))
-                if((command.upper() == "PRIVMSG") and len(arguments)>0):
-                    # targetname, message = self.__parse_input(arguments)
-                    self.send_message(arguments[0], arguments[1:], sock)
+                #command, arguments = self.__parse_input(data.outb.decode('utf-8'))
+                # if((command.upper() == "PRIVMSG") and len(arguments)>0):
+                #     # targetname, message = self.__parse_input(arguments)
+                #     self.send_message(arguments[0], arguments[1:], sock)
                 print('echoing', repr(data.outb), 'to', data.addr)
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
@@ -115,7 +115,7 @@ class Server(object):
     def has_channel(self, channelname):
         if channelname in self.channels:
             return True
-            
+
     def delete_channel(self, channel):
         del self.channels[channel]
 

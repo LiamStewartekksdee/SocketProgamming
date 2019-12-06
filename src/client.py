@@ -41,6 +41,9 @@ class Client():
             self.handler = self.__command_handler
             self.prefix % (self.nickname, self.username, self.server.HOST)
             self.welcome_message(key)
+
+            # if not self.has_joined_channel('#test'):
+            #     self.__join_handler(key, 'JOIN', ['#test'])
         else:
             if data:
                 self.handler = self.__registration_handler
@@ -129,11 +132,12 @@ class Client():
                 #data.inb = send_format
     
     def __part_handler(self, key, command, arguments):
+        sock = key.fileobj
         if((command.upper() == "PART") and len(arguments)>0):
             # leave channel
             if sock in self.server.clients:
-                if self.server.clients[sock].channels[arguments[0]]:
-                    self.server.clients[sock].leave_channels(arguments[0])
+                self.leave_channel(key, arguments[0])
+
 
     def __privmsg_handler(self, key, command, arguments):
         if((command.upper() == "PRIVMSG") and len(arguments)>1):
@@ -203,14 +207,19 @@ class Client():
         self.writebuffer = ""
 
 
-    def leave_channel(self, channelname):
+    def leave_channel(self, key, channelname):
         channel = self.channels[channelname.lower()]
-    
-    def msg_chann(self, command, message):
-        msg_format = ':%s %s %s' % (self.prefix, command, argument)   
         channel.remove_member(self)
-        del self.channels[channelname.lower()]
-        print(" left" + channelname)
+
+        self.writebuffer += ':%s PART :%s\r\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), channelname)
+        self.server.send_message_to_client(self.writebuffer, key=key)
+        self.writebuffer = ""
+    
+    # def msg_chann(self, command, message):
+    #     msg_format = ':%s %s %s' % (self.prefix, command, argument)   
+    #     channel.remove_member(self)
+    #     del self.channels[channelname.lower()]
+    #     print(" left" + channelname)
 
     def leave_channels(self):
         for channel in self.channels.values():
@@ -230,6 +239,10 @@ class Client():
         sock.send(bytes('Use /HELP to list the available commands' + '\r\n', 'UTF-8'))
         sock.send(bytes(divider + '\r\n', 'UTF-8'))
 
+
+    def has_joined_channel(self, channelname):
+        if channelname.lower() in self.channels:
+            return True
 
     def set_nickname(self, nickname):
         self.nickname = nickname
