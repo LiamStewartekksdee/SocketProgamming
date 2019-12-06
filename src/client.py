@@ -137,22 +137,35 @@ class Client():
 
     def __privmsg_handler(self, key, command, arguments):
         if((command.upper() == "PRIVMSG") and len(arguments)>1):
-            channelname = arguments[0]
+            target = arguments[0]
+
             message = arguments[1:]
             print(arguments)
             #:source PRIVMSG <target> :Message
-            response_format = ':%s PRIVMSG %s %s\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), channelname, ' '.join(message))
-            channel = self.server.get_channel(channelname)
-        
-            for client in channel.members:
-                if client is not self:
-                    client.writebuffer += response_format   
-                    self.server.send_message_to_client(client.writebuffer, client.key)
-                    print(client.key)
-                  
-            for client in channel.members:
-                client.writebuffer = ""
+            response_format = ':%s PRIVMSG %s %s\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), target, ' '.join(message))
+            
+            
+            has_channel = self.server.has_channel(target)
+            if has_channel:
+                channel = self.server.get_channel(target)
+                for client in channel.members:
+                    if client is not self:
+                        client.writebuffer += response_format   
+                        self.server.send_message_to_client(client.writebuffer, client.key)
+                        print(client.key)
 
+                for client in channel.members:
+                    client.writebuffer = ""
+            else:
+                for client in self.server.clients.values():
+                    if client.get_nickname() == target:
+                        client.writebuffer += response_format
+                        self.server.send_message_to_client(client.writebuffer, client.key)
+
+                for client in self.server.clients.values():
+                    if client.get_nickname() == target:
+                        client.writebuffer = ""
+            
     def __command_handler(self, key, command, arguments):
         self.__nickname_handler(key, command, arguments)
         self.__username_handler(key, command, arguments)

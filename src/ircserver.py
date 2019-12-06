@@ -112,6 +112,10 @@ class Server(object):
             self.channels[channelname.lower()] = channel1
         return channel1
     
+    def has_channel(self, channelname):
+        if channelname in self.channels:
+            return True
+            
     def delete_channel(self, channel):
         del self.channels[channel]
 
