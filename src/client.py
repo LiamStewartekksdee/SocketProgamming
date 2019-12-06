@@ -200,7 +200,7 @@ class Client():
         print(" left" + channelname)
 
     def leave_channels(self):
-        for channel in self.channels:
+        for channel in self.channels.values():
             channel.remove_member(self)
             del channel
     
