@@ -5,7 +5,7 @@ import datetime  #Imports the datetime library
 
 #Sets the socket,server,channel and bot name here
 thesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server = "chat.freenode.net" 
+server = "localhost" 
 channel = "#test" 
 botname = "Probot" 		 
 name = "Admin"
@@ -13,27 +13,31 @@ name = "Admin"
 #Connects to the the sever and names the bot
 thesocket.connect((server, 6667))
 
-thesocket.send(bytes("USER "+ botname +" "+ botname +" "+ botname + " " + botname + "\n", "UTF-8")) 
+thesocket.send(bytes("CAP LS 302\r\n", "UTF-8"))
 
-thesocket.send(bytes("NICK "+ botname +"\n", "UTF-8"))
+thesocket.send(bytes("USER "+ botname +" "+ botname +" "+ botname + " " + botname + "\r\n", "UTF-8")) 
+
+thesocket.send(bytes("NICK "+ botname +"\r\n", "UTF-8"))
 
 
 #Function to allow the bot to respond to pings
 def ping(): 
 	ircsock.send(bytes("PONG :pingisn", "UTF-8"))
-	
+
+
+
 #Function which allows the bot to join a channel	
 def joinchan(chan): 
 	thesocket.send(bytes("JOIN "+ chan +"\n", "UTF-8")) 
 	themessage = ""
 	
-	while themessage.find("End of /NAMES list.") == -1:  
+	# while themessage.find("End of /NAMES list.") == -1:  
 	
-		themessage = thesocket.recv(2048).decode("UTF-8")
+	# 	themessage = thesocket.recv(2048).decode("UTF-8")
 		
-		themessage = themessage.strip('\n\r')
+	# 	themessage = themessage.strip('\n\r')
 		
-		print(themessage)
+	# 	print(themessage)
 		
 		
 #Function which sends a message to the bots given target 
