@@ -7,7 +7,6 @@ import selectors
 import types
 import client
 import channel
-import chatbot
 import servererr as serr
 
 

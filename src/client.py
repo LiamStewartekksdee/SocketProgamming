@@ -20,6 +20,7 @@ class Client():
         self.prefix = '%s!%s@%s' #nickname, user, host
         self.handler = self.__registration_handler
         self.key = None
+
     
     def __parse_input(self, line):
         x = line.split()
@@ -141,7 +142,6 @@ class Client():
             print(arguments)
             #:source PRIVMSG <target> :Message
             response_format = ':%s PRIVMSG %s %s\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), channelname, ' '.join(message))
-
             channel = self.server.get_channel(channelname)
         
             for client in channel.members:

@@ -5,6 +5,7 @@ import datetime  #Imports the datetime library
 
 #Sets the socket,server,channel and bot name here
 thesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 server = "127.0.0.1" 
 channel = "#test" 
 botname = "Prsdassdasdsaasobot" 		 
@@ -21,14 +22,14 @@ thesocket.send(bytes("/NICK "+ botname +"\n", "UTF-8"))
 #Function to allow the bot to respond to pings
 def ping(): 
 	thesocket.send(bytes("/PONG :pingisn", "UTF-8"))
-	
+  
+  
 #Function which allows the bot to join a channel	
 def joinchan(chan): 
 	thesocket.send(bytes("/JOIN "+ chan +"\n", "UTF-8")) 
 	themessage = ""
 	
 	if(themessage.find("End of /NAMES list.") == -1):  
-	
 		themessage = thesocket.recv(2048).decode("UTF-8")
 		
 		themessage = themessage.strip('\n\r')
