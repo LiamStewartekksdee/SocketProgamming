@@ -8,25 +8,26 @@ thesocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 server = "127.0.0.1" 
 channel = "#test" 
-botname = "Prsdassdasdsaasobot" 		 
+botname = "Probot" 		 
 name = "Admin"
 
 #Connects to the the sever and names the bot
 thesocket.connect((server, 6667))
 
-thesocket.send(bytes("/USER "+ botname +" "+ botname +" "+ botname + " " + botname + "\n", "UTF-8")) 
+thesocket.send(bytes("NICK "+ botname + "\r\n", "UTF-8"))
+thesocket.send(bytes("USER "+ botname +" "+ botname +" "+ botname + " " + botname + "\r\n", "UTF-8")) 
 
-thesocket.send(bytes("/NICK "+ botname +"\n", "UTF-8"))
+
 
 
 #Function to allow the bot to respond to pings
 def ping(): 
-	thesocket.send(bytes("/PONG :pingisn", "UTF-8"))
+	thesocket.send(bytes("PONG :pingisn", "UTF-8"))
   
   
 #Function which allows the bot to join a channel	
 def joinchan(chan): 
-	thesocket.send(bytes("/JOIN "+ chan +"\n", "UTF-8")) 
+	thesocket.send(bytes(":%s!%s@%s JOIN :%s\r\n" % (botname, botname, server, '#test'), "UTF-8")) 
 	themessage = ""
 	
 	if(themessage.find("End of /NAMES list.") == -1):  
@@ -39,7 +40,7 @@ def joinchan(chan):
 		
 #Function which sends a message to the bots given target 
 def sendmsg(msg, target):
-	thesocket.send(bytes("/PRIVMSG "+ target +" :"+ msg +"\n", "UTF-8"))
+	thesocket.send(bytes("PRIVMSG "+ target +" :"+ msg +"\n", "UTF-8"))
 	
 #Main method for the bot program	
 def main():
