@@ -1,9 +1,6 @@
 # SocketProgamming
 Assignment 2 Networks: Socket Progamming Project
 
-# SocketProgamming
-Assignment 2 Networks: Socket Progamming Project
-
 VERSION is python 3.7 / higher
 
 Server is in SocketProgramming/src/ircserver.py
