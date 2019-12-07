@@ -15,7 +15,7 @@ class Server(object):
     def __init__(self):
         self.channels = {}
         self.clients = {}
-        self.HOST = '127.0.0.1'
+        self.HOST = 'localhost'
         self.PORT = 6667
         self.sel = selectors.DefaultSelector()
 
@@ -60,9 +60,13 @@ class Server(object):
         arguments = x[1:]
         return command, arguments
 
+    '''
+    Where the commands and events are serviced
+    '''
     def service_connection(self, key, mask):
         sock = key.fileobj
         data = key.data
+
         self.clients[sock].key = key
 
         if mask & selectors.EVENT_READ:
@@ -91,10 +95,6 @@ class Server(object):
                 sock.close()
         if mask & selectors.EVENT_WRITE:
             if data.outb:
-                #command, arguments = self.__parse_input(data.outb.decode('utf-8'))
-                # if((command.upper() == "PRIVMSG") and len(arguments)>0):
-                #     # targetname, message = self.__parse_input(arguments)
-                #     self.send_message(arguments[0], arguments[1:], sock)
                 print('echoing', repr(data.outb), 'to', data.addr)
                 sent = sock.send(data.outb)  # Should be ready to write
                 data.outb = data.outb[sent:]
@@ -103,6 +103,9 @@ class Server(object):
                 sent = sock.send(data.inb)
                 data.inb = data.inb[sent:]
 
+    '''
+    Returns the channel if exists else make the channel specified
+    '''
     def get_channel(self, channelname):
         if channelname in self.channels:
             channel1 = self.channels[channelname.lower()]
@@ -112,17 +115,27 @@ class Server(object):
             self.channels[channelname.lower()] = channel1
         return channel1
     
+    '''
+    If the channel exists in the server list of channels
+    '''
     def has_channel(self, channelname):
         if channelname in self.channels:
             return True
 
+    '''
+    Remove channel
+    '''
     def delete_channel(self, channel):
         del self.channels[channel]
 
+    '''
+    Remove member from the channel 
+    '''
     def remove_member_from_channel(self, client, channelname):
         if channelname.lower() in self.channels:
             channel = self.channels[channelname.lower()]
             channel.remove_member(client)
+
 
     def send_message(self, targetname, message, sock):
         # targetname, message = self.__parse_input(line)
@@ -139,6 +152,9 @@ class Server(object):
         for member in self.channels[channelname.lower()].members:
             self.send_message(member, message, sock)
     
+    '''
+    sends events to hexchat/other 
+    '''
     def send_message_to_client(self, message, key):
         data = key.data
         sock = key.fileobj
@@ -149,12 +165,14 @@ class Server(object):
         sent = sock.send(data.outb)
         data.outb = data.outb[sent:]
 
-    def get_prefix(self):
-        return self.prefix
-    
+
     def get_clients(self):
         return self.clients
 
+
+'''
+Server starts running here
+'''
 server = Server()
 server.start()
 server.run()

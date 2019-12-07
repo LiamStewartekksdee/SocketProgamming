@@ -6,7 +6,14 @@ import types
 import channel
 import servererr as serr
 
+
+'''
+This class handles all the commands for the client/bot that connects to the server
+'''
 class Client():
+    '''
+    we need the server object to call certian server methods and the clients socket to send events
+    '''
     def __init__(self, server, socket):
         self.server = server
         self.socket = socket
@@ -21,13 +28,10 @@ class Client():
         self.handler = self.__registration_handler
         self.key = None
 
-    
-    def __parse_input(self, line):
-        x = line.split()
-        command = x[0]
-        arguments = x[1:]
-        return command, arguments
 
+    '''
+    Handles when a user first loggs in
+    '''
     def __registration_handler(self, key, command, arguments):
         sock = key.fileobj
         data = key.data
@@ -38,6 +42,7 @@ class Client():
         
 
         if self.username is not None and self.nickname is not None:
+            # change the handler to command handler so the user can use commands such as /JOIN
             self.handler = self.__command_handler
             self.prefix % (self.nickname, self.username, self.server.HOST)
             self.welcome_message(key)
@@ -45,9 +50,13 @@ class Client():
             # if not self.has_joined_channel('#test'):
             #     self.__join_handler(key, 'JOIN', ['#test'])
         else:
+            # if registration is not successful then the handler stays as the registration handler
             if data:
                 self.handler = self.__registration_handler
 
+    '''
+    sets the nickname of the client
+    '''
     def __nickname_handler(self, key, command, arguments):
         sock = key.fileobj
     
@@ -76,19 +85,20 @@ class Client():
                 #     self.writebuffer = ""
                         
                     
-                    
-                    
-
+    '''
+    sets the username of the client
+    '''
     def __username_handler(self, key, command, arguments):
         sock = key.fileobj
+        # this makes sure that the user is set when the client first signs up 
         if len(arguments) > 1 and arguments[1] == "USER":
             command = arguments[1]
             arguments[0] = arguments[2]
         
         if(command.upper() == "USER"):
-            # set/change username & realname <-- client has to take this step before registering
-            #Parameters: <username> <hostname> <servername> <realname>
+
             has_username = False
+            # checks if the username is in use
             if sock in self.server.clients:
                 for client in self.server.clients.values():
                     if client.get_username() == arguments[0]:
@@ -108,6 +118,9 @@ class Client():
                 #     self.server.send_message_to_client(self.writebuffer, key)
                 #     self.writebuffer = ""
 
+    '''
+    lists all the users connected
+    '''
     def __users_handler(self, key, command, arguments):
         sock = key.fileobj
         if(command.upper() == "USERS"):
@@ -115,6 +128,9 @@ class Client():
                 sock.send(bytes(str(client.get_username()) + '\n', 'UTF-8'))
     
 
+    '''
+    join a client into a channel
+    '''
     def __join_handler(self, key, command, arguments):
         sock = key.fileobj
         data = key.data
@@ -123,14 +139,12 @@ class Client():
             print("found join command and argument")
             if sock in self.server.clients:
                 print("found client in dictionary")
-                # get client object that is in our dictionary as a 
-                # pair socket : Client object and connect Client to channel
                 print(arguments[0])
                 self.join_channel(key, arguments[0])
-                #send_format = "TOPIC %s :%s" % (self.channels[arguments[0]].get_channel_name(), self.channels[arguments[0]].get_topic())
-                
-                #data.inb = send_format
     
+    '''
+    when a client leaves a channel
+    '''
     def __part_handler(self, key, command, arguments):
         sock = key.fileobj
         if((command.upper() == "PART") and len(arguments)>0):
@@ -139,6 +153,9 @@ class Client():
                 self.leave_channel(key, arguments[0])
 
 
+    '''
+    PRIVMSG a channel or a user. This method checks for this and handles appropiately
+    '''
     def __privmsg_handler(self, key, command, arguments):
         if((command.upper() == "PRIVMSG") and len(arguments)>1):
             target = arguments[0]
@@ -146,30 +163,39 @@ class Client():
             message = arguments[1:]
             print(arguments)
             #:source PRIVMSG <target> :Message
+            # format to be sent back to the client
             response_format = ':%s PRIVMSG %s %s\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), target, ' '.join(message))
             
-            
+            # checks if the target is a channel
             has_channel = self.server.has_channel(target)
             if has_channel:
                 channel = self.server.get_channel(target)
                 for client in channel.members:
                     if client is not self:
-                        client.writebuffer += response_format   
+                        client.writebuffer += response_format
+                        # sends to the client socket so all the other clients can view the message   
                         self.server.send_message_to_client(client.writebuffer, client.key)
                         print(client.key)
 
+                 # free the write buffer
                 for client in channel.members:
                     client.writebuffer = ""
             else:
+                # otherwise the message is intended for a specific user
                 for client in self.server.clients.values():
                     if client.get_nickname() == target:
                         client.writebuffer += response_format
+                        # sends to the client socket so all the other clients can view the message
                         self.server.send_message_to_client(client.writebuffer, client.key)
 
+                # free the write buffer
                 for client in self.server.clients.values():
                     if client.get_nickname() == target:
                         client.writebuffer = ""
-            
+
+    '''
+    Where the commands are handled
+    '''    
     def __command_handler(self, key, command, arguments):
         self.__nickname_handler(key, command, arguments)
         self.__username_handler(key, command, arguments)
@@ -179,6 +205,9 @@ class Client():
         self.__privmsg_handler(key, command, arguments)
 
 
+    '''
+    Main join functionality called in __join_handler
+    '''
     def join_channel(self, key, channelname):
         channel = self.server.get_channel(channelname)
         channel.add_member(self)
@@ -186,7 +215,11 @@ class Client():
         print(" connected to " + channelname)
         print(self.channels)
         print(" are the client's channels")
-    
+
+        ##
+        # Format to be sent
+        # different events such as TOPIC, JOIN, NAMES list is sent. Then the channel is created
+        ##
         response_format = ':%s TOPIC %s :%s\r\n' % (channel.topic_by, channel.name, channel.topic)
         self.writebuffer += response_format
 
@@ -203,30 +236,35 @@ class Client():
         response_format = ':%s 366 %s %s: End of /NAMES list\r\n' % (self.server.HOST, self.nickname, channelname)
         self.writebuffer += response_format
 
+        # server sends the message
         self.server.send_message_to_client(self.writebuffer, key=key)
         self.writebuffer = ""
 
 
+    '''
+    Main part functionality called in __part_handler
+    '''
     def leave_channel(self, key, channelname):
         channel = self.channels[channelname.lower()]
         channel.remove_member(self)
 
+        # Format to be sent, the event part is sent to make sure the client has left th channel
         self.writebuffer += ':%s PART :%s\r\n' % (self.prefix % (self.nickname, self.username, self.server.HOST), channelname)
         self.server.send_message_to_client(self.writebuffer, key=key)
         self.writebuffer = ""
-    
-    # def msg_chann(self, command, message):
-    #     msg_format = ':%s %s %s' % (self.prefix, command, argument)   
-    #     channel.remove_member(self)
-    #     del self.channels[channelname.lower()]
-    #     print(" left" + channelname)
 
+    '''
+    When a client leaves remove them from the channels
+    '''
     def leave_channels(self):
         for channel in self.channels.values():
             channel.remove_member(self)
             del channel
     
 
+    '''
+    Welcome message when the client registers
+    '''
     def welcome_message(self, key):
         sock = key.fileobj
         divider = '----------------------------'
@@ -239,11 +277,16 @@ class Client():
         sock.send(bytes('Use /HELP to list the available commands' + '\r\n', 'UTF-8'))
         sock.send(bytes(divider + '\r\n', 'UTF-8'))
 
-
+    '''
+    checks if the client has joined a channel
+    '''
     def has_joined_channel(self, channelname):
         if channelname.lower() in self.channels:
             return True
 
+    '''
+    setters and getters
+    '''
     def set_nickname(self, nickname):
         self.nickname = nickname
 
